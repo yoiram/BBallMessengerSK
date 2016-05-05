@@ -9,6 +9,10 @@
 import SpriteKit
 import AVFoundation
 
+struct scoreKey {
+    static let highScore = "highScore"
+}
+
 class GameScene: SKScene,SKPhysicsContactDelegate {
     
     //init constants and variables
@@ -28,8 +32,12 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
     var scoringNode = SKSpriteNode()
     var loadingRimNode = SKSpriteNode()
     var scoreLabel = SKLabelNode()
+    var highScoreLabel = SKLabelNode()
+    var resetButton = SKSpriteNode()
     var score = 0
     var scored = false
+    let defaults = NSUserDefaults.standardUserDefaults()
+    
     
     override init(size: CGSize) {
         super.init(size: size)
@@ -143,6 +151,14 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         scoreLabel.text = "Score: 0"
         self.addChild(scoreLabel)
         
+        //init highScoreLabel
+        highScoreLabel = SKLabelNode()
+        highScoreLabel.fontSize = 26
+        highScoreLabel.position = CGPoint(x: self.frame.size.width/2, y: self.frame.size.height/2 - (scoreLabel.frame.height*1.5))
+        highScoreLabel.fontColor = UIColor.darkGrayColor()
+        highScoreLabel.text = "High Score: \(defaults.integerForKey(scoreKey.highScore))"
+        self.addChild(highScoreLabel)
+        
         //assign bitmasks
         bottom.physicsBody?.categoryBitMask = bottomCategory
         
@@ -206,7 +222,18 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == scoreCategory || firstBody.categoryBitMask == scoreCategory && secondBody.categoryBitMask == ballCategory {
             scored = true
             score += 1
+        
+            let highScore = defaults.integerForKey(scoreKey.highScore)
+                
+            //update stored highScore if current score is higher
+            if score > highScore {
+                defaults.setValue(score, forKey: scoreKey.highScore)
+            }
+            
+            defaults.synchronize()
+            
             scoreLabel.text = "Score: \(score)"
+            highScoreLabel.text = "High Score: \(defaults.integerForKey(scoreKey.highScore))"
         }
         
         //handle all cases when ball reaches the bottom
@@ -232,6 +259,7 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
                     } else {
                         score = 0
                         scoreLabel.text = "Score: 0"
+                        highScoreLabel.text = "High Score: \(defaults.integerForKey(scoreKey.highScore))"
                         reset()
                         self.addChild(basketBall)
                     }
@@ -241,6 +269,7 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
                 thrown = false
                 passedTop = false
             } else {
+                //DO NOTHING
                 print("touched 2")
             }
         }
