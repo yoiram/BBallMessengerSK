@@ -13,12 +13,14 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
     
     //init constants and variables
     var fingerIsOnBall = false
+    var thrown = false
     let ballCategoryName = "ball"
-    let rimCategoryName = "rim"
     var backgroundMusicPlayer = AVAudioPlayer()
     let ballCategory:UInt32 = 0x1 << 0              // 000000001
     let bottomCategory:UInt32 = 0x1 << 1            // 000000010
     let rimCategory:UInt32 = 0x1 << 2               // 000000100
+    var leftRim = SKSpriteNode()
+    var rightRim = SKSpriteNode()
     
     override init(size: CGSize) {
         super.init(size: size)
@@ -58,10 +60,10 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         self.addChild(bottom)
         
         //init rim edges
-        let rimL = SKSpriteNode(color: self.backgroundColor, size: CGSizeMake(10,10))
-        let rimR = SKSpriteNode(color: self.backgroundColor, size: CGSizeMake(10,10))
-        rimL.name = rimCategoryName
-        rimR.name = rimCategoryName
+        let rimL = SKSpriteNode(color: UIColor.redColor(), size: CGSizeMake(10,10))
+        let rimR = SKSpriteNode(color: UIColor.redColor(), size: CGSizeMake(10,10))
+        rimL.name = "rimL"
+        rimR.name = "rimR"
         rimL.position = CGPointMake(self.frame.size.width/2 - 60, self.frame.size.height - 160)
         rimR.position = CGPointMake(self.frame.size.width/2 + 60, self.frame.size.height - 160)
         
@@ -78,6 +80,9 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         rimR.physicsBody?.allowsRotation = false
         rimL.physicsBody?.pinned = true
         rimR.physicsBody?.pinned = true
+        
+        leftRim = rimL
+        rightRim = rimR
         
         //init net
         let net = SKSpriteNode(imageNamed: "basketball_basket-512")
@@ -106,6 +111,7 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         ball.physicsBody?.categoryBitMask = ballCategory
         rimL.physicsBody?.categoryBitMask = rimCategory
         rimR.physicsBody?.categoryBitMask = rimCategory
+        ball.physicsBody?.contactTestBitMask = bottomCategory
         
     }
     
@@ -124,25 +130,52 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
             fingerIsOnBall = true
         }
         firstPos = (self.childNodeWithName(ballCategoryName)?.position)!
+//        self.childNodeWithName("rimL")?.removeFromParent() //removes rims from self
+//        self.childNodeWithName("rimR")?.removeFromParent()
     }
-    
-//    override func touchesMoved(touches: Set<UITouch>, withEvent event: UIEvent?) {
-//    }
     
     //will shoot if finger started on ball
     override func touchesEnded(touches: Set<UITouch>, withEvent event: UIEvent?) {
         if fingerIsOnBall {
             let touch = touches.first
             let touchLocation = touch?.locationInNode(self)
-            var x = touchLocation!.x - firstPos!.x
-            var y = touchLocation!.y - firstPos!.y
-            x = x/2
-            y = y/2
-            let vector = CGVectorMake(x, y)
+            let x : CGFloat = touchLocation!.x - firstPos!.x
+            let y : CGFloat = touchLocation!.y - firstPos!.y
+            let desiredImpulse : CGFloat = 245.0 * 245.0
+            let a = ((x*x) + (y*y)) / desiredImpulse //original v^2 over the desired v^2
+            let newX = sqrt((x*x)/a)
+            let newY = sqrt((y*y)/a)
+            let vector = CGVectorMake(newX, newY) //create a vector whos impulse is equal to the root of desiredImpulse
             self.childNodeWithName(ballCategoryName)?.physicsBody?.applyImpulse(vector)
             firstPos = nil
         }
         fingerIsOnBall = false
+        thrown = true
+    }
+    
+    func didBeginContact(contact: SKPhysicsContact) {
+        var firstBody = SKPhysicsBody()
+        var secondBody = SKPhysicsBody()
+        
+        if contact.bodyA.categoryBitMask < contact.bodyB.categoryBitMask {
+            firstBody = contact.bodyA
+            secondBody = contact.bodyB
+        } else {
+            firstBody = contact.bodyB
+            secondBody = contact.bodyA
+        }
+        
+        if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == bottomCategory {
+            if thrown {
+                //TODO: if scored, increment score counter and put ball in new position
+                //TODO: else reset score and ball
+                print("touched 1")
+                thrown = false
+            } else {
+                //TODO: do nothing
+                print("touched 2")
+            }
+        }
     }
     
     required init?(coder aDecoder: NSCoder) {
