@@ -14,13 +14,22 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
     //init constants and variables
     var fingerIsOnBall = false
     var thrown = false
+    var passedTop = false
     let ballCategoryName = "ball"
     var backgroundMusicPlayer = AVAudioPlayer()
     let ballCategory:UInt32 = 0x1 << 0              // 000000001
     let bottomCategory:UInt32 = 0x1 << 1            // 000000010
     let rimCategory:UInt32 = 0x1 << 2               // 000000100
+    let scoreCategory:UInt32 = 0x1 << 3             // 000001000
+    let loadRimCategory:UInt32 = 0x1 << 4           // 000010000
+    var basketBall = SKSpriteNode()
     var leftRim = SKSpriteNode()
     var rightRim = SKSpriteNode()
+    var scoringNode = SKSpriteNode()
+    var loadingRimNode = SKSpriteNode()
+    var scoreLabel = SKLabelNode()
+    var score = 0
+    var scored = false
     
     override init(size: CGSize) {
         super.init(size: size)
@@ -39,7 +48,7 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         backgroundMusicPlayer.play()
         
         //init gravity
-        self.physicsWorld.gravity = CGVectorMake(0, -9.8)
+        //self.physicsWorld.gravity = CGVectorMake(0, -9.8)
         
         //to have sides with no borders
 //        let topBorder = SKPhysicsBody(edgeFromPoint: CGPointMake(0, self.frame.size.height), toPoint: CGPointMake(self.frame.size.width,self.frame.size.height))
@@ -66,20 +75,18 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         rimR.name = "rimR"
         rimL.position = CGPointMake(self.frame.size.width/2 - 60, self.frame.size.height - 160)
         rimR.position = CGPointMake(self.frame.size.width/2 + 60, self.frame.size.height - 160)
-        
-        self.addChild(rimL)
-        self.addChild(rimR)
-        
+//        self.addChild(rimL)
+//        self.addChild(rimR)
         rimL.physicsBody = SKPhysicsBody(circleOfRadius: 7)
         rimR.physicsBody = SKPhysicsBody(circleOfRadius: 7)
         rimL.physicsBody?.affectedByGravity = false
         rimR.physicsBody?.affectedByGravity = false
-        rimL.physicsBody?.friction = 0.2
+        rimL.physicsBody?.friction = 0.1
         rimL.physicsBody?.allowsRotation = false
-        rimR.physicsBody?.friction = 0.2
+        rimR.physicsBody?.friction = 0.1
         rimR.physicsBody?.allowsRotation = false
-        rimL.physicsBody?.pinned = true
-        rimR.physicsBody?.pinned = true
+        rimL.physicsBody?.dynamic = false
+        rimR.physicsBody?.dynamic = false
         
         leftRim = rimL
         rightRim = rimR
@@ -89,16 +96,41 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         net.size = CGSizeMake(200.0, 200.0)
         net.name = "net"
         net.position = CGPointMake(self.frame.size.width/2, self.frame.size.height - 150)
-        
         self.addChild(net)
+        
+        //init scoring node
+        let scoreNode = SKSpriteNode()
+        scoreNode.size = CGSize(width: 110, height: 1)
+        scoreNode.position = CGPoint(x: self.frame.size.width/2, y: self.frame.size.height - 160)
+        scoreNode.physicsBody = SKPhysicsBody(rectangleOfSize: scoreNode.size)
+        scoreNode.physicsBody?.affectedByGravity = false
+        scoreNode.physicsBody?.dynamic = false
+        scoreNode.color = SKColor.blueColor()
+        scoreNode.name = "scoring"
+//        self.addChild(scoreNode)
+        scoringNode = scoreNode
+    
+        //init loading node
+        let loadingNode = SKSpriteNode()
+        loadingNode.size = CGSize(width: self.frame.size.width, height: 1)
+        loadingNode.position = CGPoint(x: self.frame.size.width/2, y: self.frame.size.height - 160)
+        loadingNode.physicsBody = SKPhysicsBody(rectangleOfSize: loadingNode.size)
+        loadingNode.physicsBody?.affectedByGravity = false
+        loadingNode.physicsBody?.dynamic = false
+        loadingNode.color = SKColor.redColor()
+        loadingNode.name = "loading"
+        self.addChild(loadingNode)
+        loadingRimNode = loadingNode
+        loadingNode.hidden = true
         
         //init ball
         let ball = SKSpriteNode(imageNamed: "basketball")
         ball.size = CGSizeMake(95, 75)
         ball.name = ballCategoryName
-        ball.position = CGPointMake(self.frame.size.width/2, self.frame.size.height/2)
+        ball.position = CGPointMake(self.frame.size.width/2, ball.frame.size.height/2)
         
         self.addChild(ball)
+        basketBall = ball
         
         ball.physicsBody = SKPhysicsBody(circleOfRadius: 35)
         ball.physicsBody?.friction = 0.2
@@ -106,13 +138,31 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         ball.physicsBody?.linearDamping = 0.1
         ball.physicsBody?.allowsRotation = true
         
+        //init scoreLabel
+        scoreLabel = SKLabelNode()
+        scoreLabel.fontSize = 26
+        scoreLabel.position = CGPoint(x: self.frame.size.width/2, y: self.frame.size.height/2)
+        scoreLabel.fontColor = UIColor.darkGrayColor()
+        scoreLabel.text = "Score: 0"
+        self.addChild(scoreLabel)
+        
         //assign bitmasks
         bottom.physicsBody?.categoryBitMask = bottomCategory
+        
         ball.physicsBody?.categoryBitMask = ballCategory
+        ball.physicsBody?.collisionBitMask = bottomCategory | rimCategory
+        ball.physicsBody?.contactTestBitMask = bottomCategory
+
         rimL.physicsBody?.categoryBitMask = rimCategory
         rimR.physicsBody?.categoryBitMask = rimCategory
-        ball.physicsBody?.contactTestBitMask = bottomCategory
         
+        scoreNode.physicsBody?.categoryBitMask = scoreCategory
+        scoreNode.physicsBody?.collisionBitMask = 0
+        scoreNode.physicsBody?.contactTestBitMask = ballCategory
+        
+        loadingNode.physicsBody?.categoryBitMask = loadRimCategory
+        loadingNode.physicsBody?.collisionBitMask = 0
+        loadingNode.physicsBody?.contactTestBitMask = ballCategory
     }
     
     //initial position of ball
@@ -130,8 +180,6 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
             fingerIsOnBall = true
         }
         firstPos = (self.childNodeWithName(ballCategoryName)?.position)!
-//        self.childNodeWithName("rimL")?.removeFromParent() //removes rims from self
-//        self.childNodeWithName("rimR")?.removeFromParent()
     }
     
     //will shoot if finger started on ball
@@ -154,31 +202,85 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
     }
     
     func didBeginContact(contact: SKPhysicsContact) {
-        var firstBody = SKPhysicsBody()
-        var secondBody = SKPhysicsBody()
+        let firstBody = contact.bodyA
+        let secondBody = contact.bodyB
         
-        if contact.bodyA.categoryBitMask < contact.bodyB.categoryBitMask {
-            firstBody = contact.bodyA
-            secondBody = contact.bodyB
-        } else {
-            firstBody = contact.bodyB
-            secondBody = contact.bodyA
+        if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == scoreCategory || firstBody.categoryBitMask == scoreCategory && secondBody.categoryBitMask == ballCategory {
+            scored = true
+            score += 1
+            scoreLabel.text = "Score: \(score)"
         }
         
-        if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == bottomCategory {
+        if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == bottomCategory || firstBody.categoryBitMask == bottomCategory && secondBody.categoryBitMask == ballCategory {
             if thrown {
-                //TODO: if scored, increment score counter and put ball in new position
-                //TODO: else reset score and ball
+                if scored {
+                    reset()
+                    let ball = basketBall
+                    let possiblePositions = Int (self.frame.size.width/ball.size.width)
+                    ball.position.x = CGFloat.random(possiblePositions) * ball.size.width
+                    self.addChild(ball)
+                } else {
+                    if !passedTop {
+                        self.childNodeWithName(ballCategoryName)?.removeFromParent()
+                        if (score == 0) {
+                            self.addChild(basketBall)
+                        } else {
+                            let ball = basketBall
+                            let possiblePositions = Int (self.frame.size.width/ball.size.width)
+                            ball.position.x = CGFloat.random(possiblePositions) * ball.size.width
+                            self.addChild(ball)
+                        }
+                    } else {
+                        score = 0
+                        scoreLabel.text = "Score: 0"
+                        reset()
+                        self.addChild(basketBall)
+                    }
+                }
                 print("touched 1")
+                scored = false
                 thrown = false
+                passedTop = false
             } else {
-                //TODO: do nothing
                 print("touched 2")
             }
         }
     }
     
+    func didEndContact(contact: SKPhysicsContact) {
+        let firstBody = contact.bodyA
+        let secondBody = contact.bodyB
+        
+        if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == loadRimCategory || firstBody.categoryBitMask == loadRimCategory && secondBody.categoryBitMask == ballCategory {
+            self.childNodeWithName("loading")?.removeFromParent()
+            self.addChild(leftRim)
+            self.addChild(rightRim)
+            self.addChild(scoringNode)
+            self.childNodeWithName("rimL")?.hidden = true
+            self.childNodeWithName("rimR")?.hidden = true
+            self.childNodeWithName("scoring")?.hidden = true
+
+            passedTop = true
+        }
+    }
+    
+    func reset() {
+        self.childNodeWithName(ballCategoryName)?.removeFromParent()
+        self.childNodeWithName("rimL")?.removeFromParent() //removes rims from self
+        self.childNodeWithName("rimR")?.removeFromParent()
+        self.childNodeWithName("scoring")?.removeFromParent()
+        self.addChild(loadingRimNode)
+        self.childNodeWithName("loading")?.hidden = true
+
+    }
+    
     required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
+    }
+}
+
+private extension CGFloat {
+    static func random(max: Int) -> CGFloat {
+        return CGFloat(arc4random() % UInt32(max))
     }
 }
