@@ -47,9 +47,6 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         backgroundMusicPlayer.prepareToPlay()
         backgroundMusicPlayer.play()
         
-        //init gravity
-        //self.physicsWorld.gravity = CGVectorMake(0, -9.8)
-        
         //to have sides with no borders
 //        let topBorder = SKPhysicsBody(edgeFromPoint: CGPointMake(0, self.frame.size.height), toPoint: CGPointMake(self.frame.size.width,self.frame.size.height))
 //        let bottomBorder = SKPhysicsBody(edgeFromPoint: CGPointMake(0, 0), toPoint: CGPointMake(self.frame.size.width,0))
@@ -205,12 +202,14 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         let firstBody = contact.bodyA
         let secondBody = contact.bodyB
         
+        //if scored, increment score counter, update scorelabel and set bool to true
         if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == scoreCategory || firstBody.categoryBitMask == scoreCategory && secondBody.categoryBitMask == ballCategory {
             scored = true
             score += 1
             scoreLabel.text = "Score: \(score)"
         }
         
+        //handle all cases when ball reaches the bottom
         if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == bottomCategory || firstBody.categoryBitMask == bottomCategory && secondBody.categoryBitMask == ballCategory {
             if thrown {
                 if scored {
@@ -251,6 +250,7 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         let firstBody = contact.bodyA
         let secondBody = contact.bodyB
         
+        //once ball crosses the loading node, add all net scoring components
         if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == loadRimCategory || firstBody.categoryBitMask == loadRimCategory && secondBody.categoryBitMask == ballCategory {
             self.childNodeWithName("loading")?.removeFromParent()
             self.addChild(leftRim)
@@ -264,7 +264,7 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         }
     }
     
-    func reset() {
+    func reset() { //reset node for clearing up the view
         self.childNodeWithName(ballCategoryName)?.removeFromParent()
         self.childNodeWithName("rimL")?.removeFromParent() //removes rims from self
         self.childNodeWithName("rimR")?.removeFromParent()
