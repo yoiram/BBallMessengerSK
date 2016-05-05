@@ -98,7 +98,7 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         
         //init scoring node
         scoringNode.size = CGSize(width: 110, height: 1)
-        scoringNode.position = CGPoint(x: self.frame.size.width/2, y: self.frame.size.height - 165)
+        scoringNode.position = CGPoint(x: self.frame.size.width/2, y: self.frame.size.height - 160)
         scoringNode.name = "scoring"
         
         scoringNode.physicsBody = SKPhysicsBody(rectangleOfSize: scoringNode.size)
@@ -210,20 +210,22 @@ class GameScene: SKScene,SKPhysicsContactDelegate {
         
         //if scored, increment score counter, update scorelabel and set bool to true
         if firstBody.categoryBitMask == ballCategory && secondBody.categoryBitMask == scoreCategory || firstBody.categoryBitMask == scoreCategory && secondBody.categoryBitMask == ballCategory {
-            scored = true
-            score += 1
-        
-            let highScore = defaults.integerForKey(scoreKey.highScore)
+            if !scored {
+                scored = true
+                score += 1
                 
-            //update stored highScore if current score is higher
-            if score > highScore {
-                defaults.setValue(score, forKey: scoreKey.highScore)
+                let highScore = defaults.integerForKey(scoreKey.highScore)
+                
+                //update stored highScore if current score is higher
+                if score > highScore {
+                    defaults.setValue(score, forKey: scoreKey.highScore)
+                }
+                
+                defaults.synchronize()
+                
+                scoreLabel.text = "Score: \(score)"
+                highScoreLabel.text = "High Score: \(defaults.integerForKey(scoreKey.highScore))"
             }
-            
-            defaults.synchronize()
-            
-            scoreLabel.text = "Score: \(score)"
-            highScoreLabel.text = "High Score: \(defaults.integerForKey(scoreKey.highScore))"
         }
         
         //handle all cases when ball reaches the bottom
